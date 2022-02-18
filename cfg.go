@@ -33,31 +33,28 @@ func (c *Config) GetSection(section string) *Config {
 	internal := make(map[string]string, len(c.internal))
 	for key, value := range c.internal {
 		if strings.HasPrefix(key, section) {
-			internal[key] = value
+			internal[strings.TrimPrefix(key, section)] = value
 		}
 	}
 
 	return &Config{internal}
 }
 
-func load() *Config {
+func LoadConfig() *Config {
 	data, err := os.ReadFile(VarCfgPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	internal, err := parse(data)
-	if err != nil {
-		log.Fatal(err)
-	}
+	internal := parseFile(data)
 
 	loaded := &Config{internal}
 
 	return loaded
 }
 
-func parse(data []byte) (map[string]string, error) {
-	lines := strings.Split(string(data), "\r\n")
+func parseFile(data []byte) map[string]string {
+	lines := strings.Split(string(data), "\n")
 
 	out := make(map[string]string, len(lines))
 
@@ -71,5 +68,5 @@ func parse(data []byte) (map[string]string, error) {
 		}
 	}
 
-	return out, nil
+	return out
 }

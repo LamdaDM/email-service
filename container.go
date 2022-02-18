@@ -4,6 +4,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"log"
 	"os"
+	"regexp"
 )
 
 type Container struct {
@@ -12,9 +13,9 @@ type Container struct {
 	config    *Config
 }
 
-func New() *Container {
-	config := load()
-	emailOpts := getServiceData()
+func LoadContainer() *Container {
+	config := LoadConfig()
+	emailOpts := getServiceData(config)
 	redisPool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", config.Get("REDIS:PORT"))
@@ -44,7 +45,9 @@ type EmailOpts struct {
 	template []byte
 }
 
-func getServiceData() EmailOpts {
+const TemplatePath = ".email.template"
+
+func getServiceData(config *Config) EmailOpts {
 	const (
 		NFROM     = "FROM"
 		NPASSWORD = "PASSWORD"
@@ -52,13 +55,20 @@ func getServiceData() EmailOpts {
 		NPORT     = "PORT"
 	)
 
-	cfg := container.config.GetSection("EMAIL_PROVIDER")
+	cfg := config.GetSection("EMAIL_PROVIDER")
 
 	from := cfg.Get(NFROM)
 	password := cfg.Get(NPASSWORD)
 	mailHost := cfg.Get(NHOST)
 	mailPort := cfg.Get(NPORT)
-	template := template()
+	template := template(TemplatePath)
+
+	pattern, err := regexp.Compile("([^\r]|)([\n])")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	template = pattern.ReplaceAll(template, []byte("$1\r\n"))
 
 	return EmailOpts{
 		from,
@@ -69,9 +79,8 @@ func getServiceData() EmailOpts {
 	}
 }
 
-func template() []byte {
-	const TemplatePath = ".email.template"
-	template, err := os.ReadFile(TemplatePath)
+func template(templatePath string) []byte {
+	template, err := os.ReadFile(templatePath)
 	if err != nil {
 		log.Fatal(err)
 	}

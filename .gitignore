@@ -1,4 +1,4 @@
 .idea
 .cfg
 .email
-go.*
+go.sum
