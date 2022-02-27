@@ -4,6 +4,10 @@ import (
 	"testing"
 )
 
+func init() {
+	container = LoadContainer(".cfg.template", ".email.template")
+}
+
 func TestFmtEmail(t *testing.T) {
 	actual := string(container.emailOpts.template)
 	expected := "To: ...to\r\nSubject: ...subject\r\n\r\n...body"

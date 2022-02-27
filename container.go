@@ -1,24 +1,31 @@
 package main
 
 import (
+	"context"
 	"github.com/gomodule/redigo/redis"
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 )
 
 type Container struct {
 	redisPool *redis.Pool
 	emailOpts *EmailOpts
 	config    *Config
+	logger    Logger
 }
 
-func LoadContainer() *Container {
-	config := LoadConfig()
-	emailOpts := getServiceData(config)
+func LoadContainer(cfgPath string, templatePath string) *Container {
+	ctx := context.Background()
+
+	config := LoadConfig(cfgPath)
+
+	emailOpts := getServiceData(config, templatePath)
+
 	redisPool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", config.Get("REDIS:PORT"))
+			c, err := redis.Dial("tcp", config.Get("REDIS:ADDRESS"))
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -30,10 +37,15 @@ func LoadContainer() *Container {
 		Wait:        true,
 	}
 
+	trunkPrefixLen, _ := strconv.Atoi(config.Get("TRUNK:PREFIX_LEN"))
+	trunkAddr := config.Get("TRUNK:ADDRESS")
+	logger := TrunkLoggerInit(trunkAddr, ctx, os.Stderr, trunkPrefixLen)
+
 	return &Container{
 		redisPool,
 		&emailOpts,
 		config,
+		logger,
 	}
 }
 
@@ -45,9 +57,7 @@ type EmailOpts struct {
 	template []byte
 }
 
-const TemplatePath = ".email.template"
-
-func getServiceData(config *Config) EmailOpts {
+func getServiceData(config *Config, templatePath string) EmailOpts {
 	const (
 		NFROM     = "FROM"
 		NPASSWORD = "PASSWORD"
@@ -61,7 +71,7 @@ func getServiceData(config *Config) EmailOpts {
 	password := cfg.Get(NPASSWORD)
 	mailHost := cfg.Get(NHOST)
 	mailPort := cfg.Get(NPORT)
-	template := template(TemplatePath)
+	template := template(templatePath)
 
 	pattern, err := regexp.Compile("([^\r]|)([\n])")
 	if err != nil {

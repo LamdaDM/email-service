@@ -1,26 +1,25 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
 )
 
-const VarCfgPath = ".cfg"
-
 type Config struct {
 	internal map[string]string
 }
 
-func (c *Config) TryGet(iden string) (string, bool) {
-	val, ok := c.internal[iden]
+func (c *Config) TryGet(key string) (string, bool) {
+	val, ok := c.internal[key]
 	return val, ok
 }
 
-func (c *Config) Get(iden string) string {
-	val, ok := c.internal[iden]
+func (c *Config) Get(key string) string {
+	val, ok := c.internal[key]
 	if !ok {
-		log.Fatalf("\"%s\" was not found in loaded configuration.", iden)
+		fmt.Printf("\"%s\" was not found in loaded configuration.\n", key)
 	}
 
 	return val
@@ -40,17 +39,15 @@ func (c *Config) GetSection(section string) *Config {
 	return &Config{internal}
 }
 
-func LoadConfig() *Config {
-	data, err := os.ReadFile(VarCfgPath)
+func LoadConfig(cfgPath string) *Config {
+	data, err := os.ReadFile(cfgPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	internal := parseFile(data)
 
-	loaded := &Config{internal}
-
-	return loaded
+	return &Config{internal}
 }
 
 func parseFile(data []byte) map[string]string {
@@ -62,9 +59,9 @@ func parseFile(data []byte) map[string]string {
 		currMap := strings.SplitN(lines[i], "=", 2)
 
 		if len(currMap) == 2 {
-			iden := strings.TrimSpace(currMap[0])
+			key := strings.TrimSpace(currMap[0])
 			val := strings.TrimSpace(currMap[1])
-			out[iden] = val
+			out[key] = val
 		}
 	}
 

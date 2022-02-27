@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/smtp"
+	"os"
 	"strings"
 )
 
@@ -18,6 +20,7 @@ func Mail(message []byte) bool {
 
 	req, err := parseMessage(message)
 	if err != nil {
+		fmt.Printf("Failed To parse message: %s", string(message))
 		return false
 	}
 
@@ -25,9 +28,10 @@ func Mail(message []byte) bool {
 	message = []byte(fmtEmail(req, string(sd.template)))
 
 	auth := smtp.PlainAuth("", from, pw, host)
-
+	fmt.Printf("Messaging! \n\tFrom: %s\n\tTo: %s\n\tMessage: %s\n", from, to[0], message)
 	err = smtp.SendMail(addr, auth, from, to, message)
 	if err != nil {
+		os.Stderr.Write([]byte(err.Error()))
 		return false
 	}
 
